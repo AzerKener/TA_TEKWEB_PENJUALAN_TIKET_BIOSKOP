@@ -352,7 +352,7 @@ class DatabaseSeeder extends Seeder
             $taxAmount   = ($subtotalTicket + $subtotalFnb) * 0.10;
             $totalAmount = $subtotalTicket + $subtotalFnb + $taxAmount;
             $method      = $paymentMethods[array_rand($paymentMethods)];
-            $paidAt      = Carbon::parse($schedule->show_date . ' ' . $schedule->start_time)->subHours(rand(1, 24));
+            $paidAt      = Carbon::parse($schedule->show_date->toDateString() . ' ' . substr($schedule->start_time, 0, 5))->subHours(rand(1, 24));
 
             $transaction = Transaction::create([
                 'user_id'        => $customer->id,
@@ -383,7 +383,7 @@ class DatabaseSeeder extends Seeder
                         'seat_type'      => $td['seat']->type,
                         'price'          => $td['price'],
                         'status'         => 'used',
-                        'used_at'        => Carbon::parse($schedule->show_date . ' ' . $schedule->start_time)->addMinutes(5),
+                        'used_at'        => Carbon::parse($schedule->show_date->toDateString() . ' ' . substr($schedule->start_time, 0, 5))->addMinutes(5),
                     ]);
                     $ticketCount++;
                 }

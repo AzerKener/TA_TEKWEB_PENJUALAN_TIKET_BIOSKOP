@@ -47,18 +47,30 @@ class ReportController extends Controller
             ->take(10)
             ->get();
 
-        // Occupancy rate per studio
-        $studioOccupancy = Schedule::select('studios.name as studio_name')
-            ->join('studios', 'schedules.studio_id', '=', 'studios.id')
-            ->whereBetween('schedules.show_date', [$startDate, $endDate])
-            ->groupBy('studios.id', 'studios.name')
-            ->selectRaw('studios.id, studios.name as studio_name, COUNT(schedules.id) as schedule_count')
-            ->get();
+        // Total tiket terjual dalam periode
+        $totalTicketsSold = \App\Models\Ticket::whereHas('transaction', function ($q) use ($startDate, $endDate) {
+            $q->paid()->whereBetween(\Illuminate\Support\Facades\DB::raw('DATE(paid_at)'), [$startDate, $endDate]);
+        })->where('status', '!=', 'cancelled')->count();
+
+        // Occupancy rate per studio (with percentage)
+        $studioOccupancy = \App\Models\Studio::with(['seats'])
+            ->withCount(['schedules' => fn($q) => $q->whereBetween('show_date', [$startDate, $endDate])])
+            ->get()
+            ->map(function ($studio) use ($startDate, $endDate) {
+                $totalSeats = $studio->seats->where('is_active', true)->count();
+                $scheduleCount = $studio->schedules_count;
+                $maxCapacity = $totalSeats * $scheduleCount;
+                $ticketsSold = \App\Models\Ticket::whereHas('seat', fn($q) => $q->where('studio_id', $studio->id))
+                    ->whereHas('transaction', fn($q) => $q->paid()->whereBetween(\Illuminate\Support\Facades\DB::raw('DATE(paid_at)'), [$startDate, $endDate]))
+                    ->where('status', '!=', 'cancelled')->count();
+                $studio->occupancy = $maxCapacity > 0 ? round($ticketsSold / $maxCapacity * 100, 1) : 0;
+                return $studio;
+            });
 
         return view('admin.reports.index', compact(
             'dailyRevenue', 'periodRevenue', 'periodCount',
             'paymentMethodStats', 'topMoviesByRevenue', 'studioOccupancy',
-            'startDate', 'endDate'
+            'totalTicketsSold', 'startDate', 'endDate'
         ));
     }
 
