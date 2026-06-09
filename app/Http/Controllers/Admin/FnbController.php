@@ -11,7 +11,7 @@ class FnbController extends Controller
 {
     public function index(Request $request)
     {
-        $query = FnbItem::query();
+        $query = FnbItem::where('is_available', true);
 
         if ($request->filled('category')) {
             $query->where('category', $request->category);
@@ -68,14 +68,12 @@ class FnbController extends Controller
 
     public function destroy(FnbItem $fnb)
     {
-        if ($fnb->image) {
-            Storage::disk('public')->delete($fnb->image);
-        }
+    $fnb->update([
+        'is_available' => false
+    ]);
 
-        $fnb->delete();
-
-        return redirect()->route('admin.fnb.index')
-            ->with('success', 'Item F&B berhasil dihapus.');
+    return redirect()->route('admin.fnb.index')
+        ->with('success', 'Item F&B berhasil dinonaktifkan.');
     }
 
     private function validateFnb(Request $request): array
